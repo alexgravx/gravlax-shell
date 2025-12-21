@@ -7,39 +7,51 @@ import (
 	"strings"
 )
 
-func read_input() string {
-	commands, err := bufio.NewReader(os.Stdin).ReadString('\n')
+type command struct {
+	execute func(args string)
+}
+
+var ShellCmds map[string]command
+
+func init() {
+	ShellCmds = map[string]command{
+		"exit": {
+			execute: func(args string) { os.Exit(0) },
+		},
+		"echo": {
+			execute: func(args string) {
+				fmt.Println(args)
+			},
+		},
+		"type": {
+			execute: func(args string) {
+				var _, exists = ShellCmds[args]
+				if exists {
+					fmt.Println(args + " is a shell builtin")
+				} else if exec, path := is_in_path(args); exec {
+					fmt.Println(args + " is " + path)
+				} else {
+					fmt.Println(args + ": not found")
+				}
+			},
+		},
+	}
+}
+
+func read_input() (string, string) {
+	cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading input:", err)
 		os.Exit(1)
 	}
-	return commands
-}
-
-func format_command(commands string) (string, []string) {
 	// Remove trailing linespace
-	commands = commands[:len(commands)-1]
-	// Split command and args
-	command_args := strings.Split(commands, " ")
-	command := command_args[0]
-	var args []string
-	if len(command_args) > 1 {
-		args = command_args[1:]
-	} else {
-		args = []string{""}
-	}
-	return command, args
+	cmd = cmd[:len(cmd)-1]
+	// Split command and argss
+	command, argss, _ := strings.Cut(cmd, " ")
+	return command, argss
 }
 
-func is_builtin(command string) bool {
-	switch command {
-	case "echo", "exit", "type":
-		return true
-	}
-	return false
-}
-
-func exec_path(path string) bool {
+func is_exec(path string) bool {
 	file, err := os.Stat(path)
 	if err != nil {
 		return false
@@ -51,12 +63,15 @@ func exec_path(path string) bool {
 	return false
 }
 
-func is_exec(command string) (bool, string) {
+func is_in_path(command string) (bool, string) {
+	if command == "" {
+		return false, ""
+	}
 	path := os.Getenv("PATH")
 	dirs := strings.SplitSeq(path, string(os.PathListSeparator))
 	for dir := range dirs {
 		filePath := dir + string(os.PathSeparator) + command
-		exec := exec_path(filePath)
+		exec := is_exec(filePath)
 		if exec {
 			return true, filePath
 		}
@@ -64,35 +79,23 @@ func is_exec(command string) (bool, string) {
 	return false, ""
 }
 
+func eval_command(cmd string, args string) {
+	var command, exists = ShellCmds[cmd]
+	if exists {
+		command.execute(args)
+	} else {
+		fmt.Println(cmd + ": command not found")
+	}
+
+}
+
 func shell() {
 	// Shell prompt
 	fmt.Print("$ ")
 	// Read command
-	commands := read_input()
-	// Format command
-	command, args := format_command(commands)
+	command, args := read_input()
 	// Evaluate command
-	switch command {
-	case "exit":
-		os.Exit(0)
-	case "echo":
-		fmt.Println(strings.Join(args, " "))
-	case "type":
-		type_command := args[0]
-		if is_builtin(type_command) {
-			fmt.Println(type_command + " is a shell builtin")
-		} else {
-			exec, path := is_exec(type_command)
-			if exec {
-				fmt.Println(type_command + " is " + path)
-			} else {
-				fmt.Println(type_command + ": not found")
-			}
-		}
-	default:
-		// Prints the "<command>: command not found" message
-		fmt.Println(command + ": command not found")
-	}
+	eval_command(command, args)
 }
 
 func main() {
