@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	//"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -93,9 +92,9 @@ func eval_command(cmd string, args string) {
 	var command, builtin = ShellCmds[cmd]
 	if builtin {
 		command.execute(args)
-	} else if is_exec, path := is_in_path(cmd); is_exec {
+	} else if is_exec, _ := is_in_path(cmd); is_exec {
 		ext_args := strings.Split(args, " ")
-		err := exec_command(path, ext_args)
+		err := exec_command(cmd, ext_args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error executing command:", err)
 		}
