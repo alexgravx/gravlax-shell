@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func main() {
+func shell() {
 	// Shell prompt
 	fmt.Print("$ ")
 	// Captures the user's command
@@ -17,4 +17,10 @@ func main() {
 	}
 	// Prints the "<command>: command not found" message
 	fmt.Println(command[:len(command)-1] + ": command not found")
+}
+
+func main() {
+	for true {
+		shell()
+	}
 }
