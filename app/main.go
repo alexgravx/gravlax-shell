@@ -36,6 +36,15 @@ func init() {
 				}
 			},
 		},
+		"pwd": {
+			execute: func(args string) {
+				wd, err := os.Getwd()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Error getting working directory:", err)
+				}
+				fmt.Println(wd)
+			},
+		},
 	}
 }
 
