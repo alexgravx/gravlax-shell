@@ -15,8 +15,15 @@ func shell() {
 		fmt.Fprintln(os.Stderr, "Error reading input:", err)
 		os.Exit(1)
 	}
-	// Prints the "<command>: command not found" message
-	fmt.Println(command[:len(command)-1] + ": command not found")
+	// Format command, remove trailing linespace
+	command = command[:len(command)-1]
+	switch command {
+	case "exit":
+		os.Exit(0)
+	default:
+		// Prints the "<command>: command not found" message
+		fmt.Println(command + ": command not found")
+	}
 }
 
 func main() {
