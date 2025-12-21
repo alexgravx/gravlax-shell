@@ -31,6 +31,14 @@ func format_command(commands string) (string, []string) {
 	return command, args
 }
 
+func is_command(command string) bool {
+	switch command {
+	case "echo", "exit", "type":
+		return true
+	}
+	return false
+}
+
 func shell() {
 	// Shell prompt
 	fmt.Print("$ ")
@@ -44,6 +52,13 @@ func shell() {
 		os.Exit(0)
 	case "echo":
 		fmt.Println(strings.Join(args, " "))
+	case "type":
+		type_command := args[0]
+		if is_command(type_command) {
+			fmt.Println(type_command + " is a shell builtin")
+		} else {
+			fmt.Println(type_command + ": not found")
+		}
 	default:
 		// Prints the "<command>: command not found" message
 		fmt.Println(command + ": command not found")
