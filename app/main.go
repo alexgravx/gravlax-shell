@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	//"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -28,7 +30,7 @@ func init() {
 				var _, exists = ShellCmds[args]
 				if exists {
 					fmt.Println(args + " is a shell builtin")
-				} else if exec, path := is_in_path(args); exec {
+				} else if is_exec, path := is_in_path(args); is_exec {
 					fmt.Println(args + " is " + path)
 				} else {
 					fmt.Println(args + ": not found")
@@ -79,14 +81,27 @@ func is_in_path(command string) (bool, string) {
 	return false, ""
 }
 
+func exec_command(path string, args []string) error {
+	ext_cmd := exec.Command(path, args...)
+	ext_cmd.Stdout = os.Stdout
+	ext_cmd.Stderr = os.Stderr
+	err := ext_cmd.Run()
+	return err
+}
+
 func eval_command(cmd string, args string) {
-	var command, exists = ShellCmds[cmd]
-	if exists {
+	var command, builtin = ShellCmds[cmd]
+	if builtin {
 		command.execute(args)
+	} else if is_exec, path := is_in_path(cmd); is_exec {
+		ext_args := strings.Split(args, " ")
+		err := exec_command(path, ext_args)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error executing command:", err)
+		}
 	} else {
 		fmt.Println(cmd + ": command not found")
 	}
-
 }
 
 func shell() {
