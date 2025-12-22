@@ -47,6 +47,13 @@ func init() {
 		},
 		"cd": {
 			execute: func(args string) {
+				if args == "" || args == "~" {
+					homeDir, err := os.UserHomeDir()
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "Error locating home directory", err)
+					}
+					args = homeDir
+				}
 				err := os.Chdir(args)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "cd: "+args+": No such file or directory")
