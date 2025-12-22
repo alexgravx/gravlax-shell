@@ -45,6 +45,14 @@ func init() {
 				fmt.Println(wd)
 			},
 		},
+		"cd": {
+			execute: func(args string) {
+				err := os.Chdir(args)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "cd: "+args+": No such file or directory")
+				}
+			},
+		},
 	}
 }
 
