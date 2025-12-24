@@ -90,25 +90,39 @@ func read_input() (string, []string) {
 
 func process_single_quotes(input string) []string {
 	var args []string
-	var current_arg strings.Builder
+	var arg strings.Builder
 	inSingleQuotes := false
+	inDoubleQuotes := false
 
-	for _, char := range input {
-		if char == '\'' {
-			inSingleQuotes = !inSingleQuotes
-			continue
-		}
-		if char == ' ' && !inSingleQuotes {
-			if current_arg.Len() != 0 {
-				args = append(args, current_arg.String())
-				current_arg.Reset()
+	for _, r := range input {
+		switch r {
+		case '\'':
+			if inDoubleQuotes {
+				arg.WriteRune(r)
+			} else {
+				inSingleQuotes = !inSingleQuotes
 			}
-			continue
+		case '"':
+			if inSingleQuotes {
+				arg.WriteRune(r)
+			} else {
+				inDoubleQuotes = !inDoubleQuotes
+			}
+		case ' ', '\t':
+			if inDoubleQuotes || inSingleQuotes {
+				arg.WriteRune(r)
+			} else {
+				if arg.Len() != 0 {
+					args = append(args, arg.String())
+					arg.Reset()
+				}
+			}
+		default:
+			arg.WriteRune(r)
 		}
-		current_arg.WriteRune(char)
 	}
-	if current_arg.Len() != 0 {
-		args = append(args, current_arg.String())
+	if arg.Len() != 0 {
+		args = append(args, arg.String())
 	}
 	return args
 }
