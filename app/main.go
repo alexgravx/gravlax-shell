@@ -9,7 +9,7 @@ import (
 )
 
 type command struct {
-	execute func(args string)
+	execute func(args []string)
 }
 
 var ShellCmds map[string]command
@@ -17,53 +17,62 @@ var ShellCmds map[string]command
 func init() {
 	ShellCmds = map[string]command{
 		"exit": {
-			execute: func(args string) { os.Exit(0) },
+			execute: func(args []string) { os.Exit(0) },
 		},
 		"echo": {
-			execute: func(args string) {
-				fmt.Println(args)
+			execute: func(args []string) {
+				arg_string := strings.Join(args, " ")
+				fmt.Println(arg_string)
 			},
 		},
 		"type": {
-			execute: func(args string) {
-				var _, exists = ShellCmds[args]
-				if exists {
-					fmt.Println(args + " is a shell builtin")
-				} else if is_exec, path := is_in_path(args); is_exec {
-					fmt.Println(args + " is " + path)
-				} else {
-					fmt.Println(args + ": not found")
+			execute: func(args []string) {
+				if len(args) == 1 {
+					arg := args[0]
+					var _, exists = ShellCmds[arg]
+					if exists {
+						fmt.Println(arg + " is a shell builtin")
+					} else if is_exec, path := is_in_path(arg); is_exec {
+						fmt.Println(arg + " is " + path)
+					} else {
+						fmt.Println(arg + ": not found")
+					}
 				}
 			},
 		},
 		"pwd": {
-			execute: func(args string) {
-				wd, err := os.Getwd()
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "Error getting working directory:", err)
+			execute: func(args []string) {
+				if len(args) == 0 {
+					wd, err := os.Getwd()
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "Error getting working directory:", err)
+					}
+					fmt.Println(wd)
 				}
-				fmt.Println(wd)
 			},
 		},
 		"cd": {
-			execute: func(args string) {
-				if args == "" || args == "~" {
-					homeDir, err := os.UserHomeDir()
-					if err != nil {
-						fmt.Fprintln(os.Stderr, "Error locating home directory", err)
+			execute: func(args []string) {
+				if len(args) == 1 {
+					arg := args[0]
+					if arg == "" || arg == "~" {
+						homeDir, err := os.UserHomeDir()
+						if err != nil {
+							fmt.Fprintln(os.Stderr, "Error locating home directory", err)
+						}
+						arg = homeDir
 					}
-					args = homeDir
-				}
-				err := os.Chdir(args)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "cd: "+args+": No such file or directory")
+					err := os.Chdir(arg)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "cd: "+arg+": No such file or directory")
+					}
 				}
 			},
 		},
 	}
 }
 
-func read_input() (string, string) {
+func read_input() (string, []string) {
 	cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading input:", err)
@@ -71,9 +80,37 @@ func read_input() (string, string) {
 	}
 	// Remove trailing linespace
 	cmd = cmd[:len(cmd)-1]
+	// Process quotes
+	cmd_list := process_single_quotes(cmd)
 	// Split command and argss
-	command, argss, _ := strings.Cut(cmd, " ")
-	return command, argss
+	command := cmd_list[0]
+	args := cmd_list[1:]
+	return command, args
+}
+
+func process_single_quotes(input string) []string {
+	var args []string
+	var current_arg strings.Builder
+	inSingleQuotes := false
+
+	for _, char := range input {
+		if char == '\'' {
+			inSingleQuotes = !inSingleQuotes
+			continue
+		}
+		if char == ' ' && !inSingleQuotes {
+			if current_arg.Len() != 0 {
+				args = append(args, current_arg.String())
+				current_arg.Reset()
+			}
+			continue
+		}
+		current_arg.WriteRune(char)
+	}
+	if current_arg.Len() != 0 {
+		args = append(args, current_arg.String())
+	}
+	return args
 }
 
 func is_exec(path string) bool {
@@ -112,13 +149,12 @@ func exec_command(path string, args []string) error {
 	return err
 }
 
-func eval_command(cmd string, args string) {
+func eval_command(cmd string, args []string) {
 	var command, builtin = ShellCmds[cmd]
 	if builtin {
 		command.execute(args)
 	} else if is_exec, _ := is_in_path(cmd); is_exec {
-		ext_args := strings.Split(args, " ")
-		err := exec_command(cmd, ext_args)
+		err := exec_command(cmd, args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error executing command:", err)
 		}
