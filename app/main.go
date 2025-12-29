@@ -81,41 +81,35 @@ func read_input() (string, []string) {
 	// Remove trailing linespace
 	cmd = cmd[:len(cmd)-1]
 	// Process quotes
-	cmd_list := process_single_quotes(cmd)
+	cmd_list := process_quotes(cmd)
 	// Split command and argss
 	command := cmd_list[0]
 	args := cmd_list[1:]
 	return command, args
 }
 
-func process_single_quotes(input string) []string {
+func process_quotes(input string) []string {
 	var args []string
 	var arg strings.Builder
 	inSingleQuotes := false
 	inDoubleQuotes := false
+	escapeNextCharacter := false
 
 	for _, r := range input {
-		switch r {
-		case '\'':
-			if inDoubleQuotes {
-				arg.WriteRune(r)
-			} else {
-				inSingleQuotes = !inSingleQuotes
-			}
-		case '"':
-			if inSingleQuotes {
-				arg.WriteRune(r)
-			} else {
-				inDoubleQuotes = !inDoubleQuotes
-			}
-		case ' ', '\t':
-			if inDoubleQuotes || inSingleQuotes {
-				arg.WriteRune(r)
-			} else {
-				if arg.Len() != 0 {
-					args = append(args, arg.String())
-					arg.Reset()
-				}
+		switch {
+		case escapeNextCharacter:
+			arg.WriteRune(r)
+			escapeNextCharacter = false
+		case r == '\\' && !(inSingleQuotes || inDoubleQuotes):
+			escapeNextCharacter = true
+		case r == '\'' && !inDoubleQuotes:
+			inSingleQuotes = !inSingleQuotes
+		case r == '"' && !inSingleQuotes:
+			inDoubleQuotes = !inDoubleQuotes
+		case (r == ' ' || r == '\t') && !(inSingleQuotes || inDoubleQuotes):
+			if arg.Len() != 0 {
+				args = append(args, arg.String())
+				arg.Reset()
 			}
 		default:
 			arg.WriteRune(r)
