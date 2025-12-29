@@ -132,6 +132,20 @@ func process_quotes(input string) []string {
 	return args
 }
 
+func extract_redirection(args []string) (cmdArgs []string, redirectOp string, outputFile string) {
+	for i, arg := range args {
+		if arg == ">" || arg == "1>" {
+			redirectOp = arg
+			cmdArgs = args[:i]
+			if i+1 < len(args) {
+				outputFile = args[i+1]
+			}
+			return cmdArgs, redirectOp, outputFile
+		}
+	}
+	return args, "", ""
+}
+
 func is_exec(path string) bool {
 	file, err := os.Stat(path)
 	if err != nil {
@@ -170,15 +184,33 @@ func exec_command(path string, args []string) error {
 
 func eval_command(cmd string, args []string) {
 	var command, builtin = ShellCmds[cmd]
+	// Redirections
+	args, redirect, output_filename := extract_redirection(args)
+	if redirect == ">" || redirect == "1>" {
+		output_file, err := os.Create(output_filename)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating file: ", err)
+			return
+		}
+		oldStdout := os.Stdout
+		os.Stdout = output_file
+		defer func() {
+			os.Stdout = oldStdout
+			output_file.Close()
+		}()
+	}
+	// Command execution
 	if builtin {
 		command.execute(args)
 	} else if is_exec, _ := is_in_path(cmd); is_exec {
 		err := exec_command(cmd, args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error executing command:", err)
+			return
 		}
 	} else {
-		fmt.Println(cmd + ": command not found")
+		fmt.Fprintln(os.Stderr, cmd+": command not found")
+		return
 	}
 }
 
