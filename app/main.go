@@ -93,15 +93,26 @@ func process_quotes(input string) []string {
 	var arg strings.Builder
 	inSingleQuotes := false
 	inDoubleQuotes := false
-	escapeNextCharacter := false
+	escapeNextCharacterOutsideQuotes := false
+	escapeNextCharacterDoubleQuotes := false
 
 	for _, r := range input {
 		switch {
-		case escapeNextCharacter:
+		case escapeNextCharacterOutsideQuotes:
 			arg.WriteRune(r)
-			escapeNextCharacter = false
+			escapeNextCharacterOutsideQuotes = false
+		case escapeNextCharacterDoubleQuotes:
+			if r == '\\' || r == '"' {
+				arg.WriteRune(r)
+			} else {
+				arg.WriteRune('\\')
+				arg.WriteRune(r)
+			}
+			escapeNextCharacterDoubleQuotes = false
 		case r == '\\' && !(inSingleQuotes || inDoubleQuotes):
-			escapeNextCharacter = true
+			escapeNextCharacterOutsideQuotes = true
+		case r == '\\' && inDoubleQuotes:
+			escapeNextCharacterDoubleQuotes = true
 		case r == '\'' && !inDoubleQuotes:
 			inSingleQuotes = !inSingleQuotes
 		case r == '"' && !inSingleQuotes:
