@@ -205,7 +205,7 @@ func eval_command(cmd string, args []string) {
 	} else if is_exec, _ := is_in_path(cmd); is_exec {
 		err := exec_command(cmd, args)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error executing command:", err)
+			//fmt.Fprintln(os.Stderr, "Error executing command:", err)
 			return
 		}
 	} else {
