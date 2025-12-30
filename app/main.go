@@ -237,6 +237,25 @@ func eval_command(cmd string, args []string) {
 	}
 }
 
+func GetAllPathExecutables() []string {
+	path := os.Getenv("PATH")
+	dirs := strings.SplitSeq(path, string(os.PathListSeparator))
+	var executables []string
+	for dir := range dirs {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, file := range files {
+			full_path := dir + string(os.PathSeparator) + file.Name()
+			if !file.IsDir() && is_exec(full_path) {
+				executables = append(executables, file.Name())
+			}
+		}
+	}
+	return executables
+}
+
 type MyCompleter struct{}
 
 func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
@@ -246,6 +265,12 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 	for builtin_cmd := range ShellCmds {
 		if pos < len(builtin_cmd) && string(line) == builtin_cmd[:pos] {
 			return [][]rune{[]rune(builtin_cmd[pos:] + " ")}, pos
+		}
+	}
+	executables := GetAllPathExecutables()
+	for _, exe := range executables {
+		if pos < len(exe) && string(line) == exe[:pos] {
+			return [][]rune{[]rune(exe[pos:] + " ")}, pos
 		}
 	}
 	fmt.Fprint(os.Stderr, "\x07")
