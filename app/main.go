@@ -334,6 +334,12 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 		return matches, pos
 	}
 
+	lcp := FindLCP(names)
+	if len(lcp) > pos {
+		suffix := []rune(lcp[pos:])
+		return [][]rune{suffix}, pos
+	}
+
 	switch c.tabCount {
 	case 1:
 		fmt.Fprint(os.Stderr, "\x07")
@@ -341,15 +347,9 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 	case 2:
 		c.tabCount = 0
 		sort.Strings(names)
-		lcp := FindLCP(names)
 		fmt.Fprintln(os.Stdout)
 		fmt.Fprintln(os.Stdout, strings.Join(names, "  "))
-		if len(lcp) > pos {
-			suffix := []rune(lcp[pos:])
-			return [][]rune{suffix}, pos
-		} else {
-			fmt.Fprintf(os.Stdout, "$ %s", input)
-		}
+		fmt.Fprintf(os.Stdout, "$ %s", input)
 	}
 	return nil, 0
 }
