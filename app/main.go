@@ -77,7 +77,7 @@ func read_input(cmd string) (string, []string) {
 	// Process quotes
 	cmd_list := process_quotes(cmd)
 	// Split command and args
-	if len(cmd_list) > 2 {
+	if len(cmd_list) >= 2 {
 		return cmd_list[0], cmd_list[1:]
 	} else if len(cmd_list) == 1 {
 		return cmd_list[0], []string{}
