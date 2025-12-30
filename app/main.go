@@ -256,9 +256,20 @@ func GetAllPathExecutables() []string {
 	return executables
 }
 
-type MyCompleter struct{}
+type MyCompleter struct {
+	executables []string
+	initialized bool
+}
+
+func (c *MyCompleter) Init() {
+	c.executables = GetAllPathExecutables()
+	c.initialized = true
+}
 
 func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	if !c.initialized {
+		c.Init()
+	}
 	if strings.Contains(string(line), " ") {
 		return nil, 0
 	}
@@ -267,8 +278,7 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 			return [][]rune{[]rune(builtin_cmd[pos:] + " ")}, pos
 		}
 	}
-	executables := GetAllPathExecutables()
-	for _, exe := range executables {
+	for _, exe := range c.executables {
 		if pos < len(exe) && string(line) == exe[:pos] {
 			return [][]rune{[]rune(exe[pos:] + " ")}, pos
 		}
