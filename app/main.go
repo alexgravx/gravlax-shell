@@ -258,6 +258,24 @@ func GetAllPathExecutables() []string {
 	return executables
 }
 
+func FindLCP(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	prefix := names[0]
+	for _, s := range names[1:] {
+		i := 0
+		for i < len(prefix) && i < len(s) && prefix[i] == s[i] {
+			i++
+		}
+		prefix = prefix[:i]
+		if prefix == "" {
+			return ""
+		}
+	}
+	return prefix
+}
+
 type MyCompleter struct {
 	executables []string
 	initialized bool
@@ -308,25 +326,31 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 		}
 	}
 
-	if len(matches) == 0 {
+	switch len(matches) {
+	case 0:
 		fmt.Fprint(os.Stderr, "\x07")
 		return nil, 0
-	}
-
-	if len(matches) == 1 {
+	case 1:
 		return matches, pos
 	}
 
-	if c.tabCount == 1 {
+	switch c.tabCount {
+	case 1:
 		fmt.Fprint(os.Stderr, "\x07")
 		return nil, 0
+	case 2:
+		c.tabCount = 0
+		sort.Strings(names)
+		lcp := FindLCP(names)
+		fmt.Fprintln(os.Stdout)
+		fmt.Fprintln(os.Stdout, strings.Join(names, "  "))
+		if len(lcp) > pos {
+			suffix := []rune(lcp[pos:])
+			return [][]rune{suffix}, pos
+		} else {
+			fmt.Fprintf(os.Stdout, "$ %s", input)
+		}
 	}
-
-	sort.Strings(names)
-	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, strings.Join(names, "  "))
-	fmt.Fprintf(os.Stdout, "$ %s", input)
-	c.tabCount = 0
 	return nil, 0
 }
 
