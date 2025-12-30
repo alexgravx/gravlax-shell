@@ -132,9 +132,26 @@ func process_quotes(input string) []string {
 	return args
 }
 
+const create_file = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+const append_file = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+
+type redirectConfig struct {
+	flags  int
+	stream **os.File
+}
+
+var redirectMap = map[string]redirectConfig{
+	">":   {create_file, &os.Stdout},
+	"1>":  {create_file, &os.Stdout},
+	"2>":  {create_file, &os.Stderr},
+	">>":  {append_file, &os.Stdout},
+	"1>>": {append_file, &os.Stdout},
+	"2>>": {append_file, &os.Stderr},
+}
+
 func extract_redirection(args []string) (cmdArgs []string, redirectOp string, outputFile string) {
 	for i, arg := range args {
-		if arg == ">" || arg == "1>" || arg == "2>" {
+		if _, ok := redirectMap[arg]; ok {
 			redirectOp = arg
 			cmdArgs = args[:i]
 			if i+1 < len(args) {
@@ -144,6 +161,27 @@ func extract_redirection(args []string) (cmdArgs []string, redirectOp string, ou
 		}
 	}
 	return args, "", ""
+}
+
+func redirectStream(redirect, filename string) (restore func()) {
+	config, ok := redirectMap[redirect]
+	if !ok {
+		return func() {}
+	}
+
+	file, err := os.OpenFile(filename, config.flags, 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error creating", filename, ":", err)
+		return func() {}
+	}
+
+	old := *config.stream
+	*config.stream = file
+
+	return func() {
+		*config.stream = old
+		file.Close()
+	}
 }
 
 func is_exec(path string) bool {
@@ -186,29 +224,7 @@ func eval_command(cmd string, args []string) {
 	var command, builtin = ShellCmds[cmd]
 	// Redirections
 	args, redirect, output_filename := extract_redirection(args)
-	if redirect != "" {
-		output_file, err := os.Create(output_filename)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating file: ", err)
-			return
-		}
-		switch redirect {
-		case ">", "1>":
-			oldStdout := os.Stdout
-			os.Stdout = output_file
-			defer func() {
-				os.Stdout = oldStdout
-				output_file.Close()
-			}()
-		case "2>":
-			oldStderr := os.Stderr
-			os.Stderr = output_file
-			defer func() {
-				os.Stderr = oldStderr
-				output_file.Close()
-			}()
-		}
-	}
+	defer redirectStream(redirect, output_filename)()
 	// Command execution
 	if builtin {
 		command.execute(args)
