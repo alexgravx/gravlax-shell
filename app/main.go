@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/chzyer/readline"
 )
 
 type command struct {
@@ -72,20 +73,17 @@ func init() {
 	}
 }
 
-func read_input() (string, []string) {
-	cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error reading input:", err)
-		os.Exit(1)
-	}
-	// Remove trailing linespace
-	cmd = cmd[:len(cmd)-1]
+func read_input(cmd string) (string, []string) {
 	// Process quotes
 	cmd_list := process_quotes(cmd)
-	// Split command and argss
-	command := cmd_list[0]
-	args := cmd_list[1:]
-	return command, args
+	// Split command and args
+	if len(cmd_list) > 2 {
+		return cmd_list[0], cmd_list[1:]
+	} else if len(cmd_list) == 1 {
+		return cmd_list[0], []string{}
+	} else {
+		return "", []string{}
+	}
 }
 
 func process_quotes(input string) []string {
@@ -231,7 +229,6 @@ func eval_command(cmd string, args []string) {
 	} else if is_exec, _ := is_in_path(cmd); is_exec {
 		err := exec_command(cmd, args)
 		if err != nil {
-			//fmt.Fprintln(os.Stderr, "Error executing command:", err)
 			return
 		}
 	} else {
@@ -240,17 +237,31 @@ func eval_command(cmd string, args []string) {
 	}
 }
 
-func shell() {
-	// Shell prompt
-	fmt.Print("$ ")
-	// Read command
-	command, args := read_input()
-	// Evaluate command
-	eval_command(command, args)
-}
-
 func main() {
+	var prefixChildren []readline.PrefixCompleterInterface
+	for k := range ShellCmds {
+		prefixChildren = append(prefixChildren, readline.PcItem(k))
+	}
+	completer := readline.NewPrefixCompleter(prefixChildren...)
+	rl, _ := readline.NewEx(&readline.Config{
+		Prompt:       "$ ",
+		AutoComplete: completer,
+	})
+
 	for {
-		shell()
+		cmd, err := rl.Readline()
+		if err != nil {
+			if err.Error() != "Interrupt" {
+				fmt.Fprintln(os.Stderr, "Error reading input:", err)
+			}
+			os.Exit(1)
+		}
+		if cmd == "" {
+			continue
+		}
+		// Read command
+		command, args := read_input(cmd)
+		// Evaluate command
+		eval_command(command, args)
 	}
 }
