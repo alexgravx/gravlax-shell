@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -281,6 +282,7 @@ type MyCompleter struct {
 	initialized bool
 	lastInput   string
 	tabCount    int
+	rl          *readline.Instance
 }
 
 func (c *MyCompleter) Init() {
@@ -349,18 +351,32 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 		sort.Strings(names)
 		fmt.Fprintln(os.Stdout)
 		fmt.Fprintln(os.Stdout, strings.Join(names, "  "))
-		fmt.Fprintf(os.Stdout, "$ %s", input)
+		c.rl.Refresh()
 	}
 	return nil, 0
+}
+
+func eval_prompt() string {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return "$ "
+	}
+	base := filepath.Base(pwd)
+	salmon := "\033[38;2;250;128;114m"
+	reset := "\033[0m"
+	fish := "🐠"
+	return fmt.Sprintf("%s%s %s $ %s", salmon, fish, base, reset)
 }
 
 func main() {
 	completer := &MyCompleter{}
 
 	rl, _ := readline.NewEx(&readline.Config{
-		Prompt:       "$ ",
+		Prompt:       eval_prompt(),
 		AutoComplete: completer,
 	})
+
+	completer.rl = rl
 
 	for {
 		cmd, err := rl.Readline()
@@ -377,5 +393,7 @@ func main() {
 		command, args := read_input(cmd)
 		// Evaluate command
 		eval_command(command, args)
+		rl.SetPrompt(eval_prompt())
+		rl.Refresh()
 	}
 }
