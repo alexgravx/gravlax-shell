@@ -237,12 +237,24 @@ func eval_command(cmd string, args []string) {
 	}
 }
 
-func main() {
-	var prefixChildren []readline.PrefixCompleterInterface
-	for k := range ShellCmds {
-		prefixChildren = append(prefixChildren, readline.PcItem(k))
+type MyCompleter struct{}
+
+func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	if strings.Contains(string(line), " ") {
+		return nil, 0
 	}
-	completer := readline.NewPrefixCompleter(prefixChildren...)
+	for builtin_cmd := range ShellCmds {
+		if pos < len(builtin_cmd) && string(line) == builtin_cmd[:pos] {
+			return [][]rune{[]rune(builtin_cmd[pos:] + " ")}, pos
+		}
+	}
+	fmt.Fprint(os.Stderr, "\x07")
+	return nil, 0
+}
+
+func main() {
+	completer := &MyCompleter{}
+
 	rl, _ := readline.NewEx(&readline.Config{
 		Prompt:       "$ ",
 		AutoComplete: completer,
