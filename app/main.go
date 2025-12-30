@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"sort"
 	"strings"
 
@@ -285,11 +286,15 @@ func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
 	}
 
 	var names []string
+	var seen []string
 	var matches [][]rune
 	add := func(name string, pos int) {
-		suffix := []rune(name[pos:] + " ")
-		matches = append(matches, suffix)
-		names = append(names, name)
+		if !slices.Contains(seen, name) {
+			suffix := []rune(name[pos:] + " ")
+			matches = append(matches, suffix)
+			names = append(names, name)
+			seen = append(seen, name)
+		}
 	}
 
 	for builtin_cmd := range ShellCmds {
