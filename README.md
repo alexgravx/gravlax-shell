@@ -1,5 +1,9 @@
 # gash: gravlax against shell 
 
+## Preview
+
+![gash](gash.png)
+
 ## Quick launch
 
 1. Ensure you have `go (1.25)` installed locally

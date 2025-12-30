@@ -368,7 +368,41 @@ func eval_prompt() string {
 	return fmt.Sprintf("%s%s %s $ %s", salmon, fish, base, reset)
 }
 
+func printSalmonBanner() {
+	salmon := "\033[38;2;250;128;114m"
+	blue := "\033[38;2;100;149;237m"
+	reset := "\033[0m"
+
+	salmonArt := []string{
+		"  ><(((('>  ><(((('>  ><(((('>  ><(((('>  ><(((('>  ",
+		"      ><((('>   ><(((('>   ><(((('>   ><(((('>      ",
+	}
+
+	gashArt := []string{
+		"       ██████   █████   ███████ ██   ██ ",
+		"      ██       ██   ██  ██      ██   ██ ",
+		"      ██  ███  ███████  ███████ ███████ ",
+		"      ██   ██  ██   ██       ██ ██   ██ ",
+		"       ██████  ██   ██  ███████ ██   ██ ",
+	}
+	fmt.Println()
+	for _, line := range salmonArt {
+		fmt.Println(salmon + line + reset)
+	}
+	fmt.Println()
+	for _, line := range gashArt {
+		fmt.Println(blue + line + reset)
+	}
+	fmt.Println()
+	for _, line := range salmonArt {
+		fmt.Println(salmon + line + reset)
+	}
+	fmt.Println()
+}
+
 func main() {
+	printSalmonBanner()
+
 	completer := &MyCompleter{}
 
 	rl, _ := readline.NewEx(&readline.Config{
