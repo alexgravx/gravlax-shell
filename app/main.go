@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -259,6 +260,8 @@ func GetAllPathExecutables() []string {
 type MyCompleter struct {
 	executables []string
 	initialized bool
+	lastInput   string
+	tabCount    int
 }
 
 func (c *MyCompleter) Init() {
@@ -267,23 +270,58 @@ func (c *MyCompleter) Init() {
 }
 
 func (c *MyCompleter) Do(line []rune, pos int) ([][]rune, int) {
+	input := string(line)
+
 	if !c.initialized {
 		c.Init()
 	}
-	if strings.Contains(string(line), " ") {
+	if input != c.lastInput {
+		c.lastInput = input
+		c.tabCount = 0
+	}
+	c.tabCount++
+	if strings.Contains(input, " ") {
 		return nil, 0
 	}
+
+	var names []string
+	var matches [][]rune
+	add := func(name string, pos int) {
+		suffix := []rune(name[pos:] + " ")
+		matches = append(matches, suffix)
+		names = append(names, name)
+	}
+
 	for builtin_cmd := range ShellCmds {
-		if pos < len(builtin_cmd) && string(line) == builtin_cmd[:pos] {
-			return [][]rune{[]rune(builtin_cmd[pos:] + " ")}, pos
+		if pos < len(builtin_cmd) && input == builtin_cmd[:pos] {
+			add(builtin_cmd, pos)
 		}
 	}
 	for _, exe := range c.executables {
-		if pos < len(exe) && string(line) == exe[:pos] {
-			return [][]rune{[]rune(exe[pos:] + " ")}, pos
+		if pos < len(exe) && input == exe[:pos] {
+			add(exe, pos)
 		}
 	}
-	fmt.Fprint(os.Stderr, "\x07")
+
+	if len(matches) == 0 {
+		fmt.Fprint(os.Stderr, "\x07")
+		return nil, 0
+	}
+
+	if len(matches) == 1 {
+		return matches, pos
+	}
+
+	if c.tabCount == 1 {
+		fmt.Fprint(os.Stderr, "\x07")
+		return nil, 0
+	}
+
+	sort.Strings(names)
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, strings.Join(names, "  "))
+	fmt.Fprintf(os.Stdout, "$ %s", input)
+	c.tabCount = 0
 	return nil, 0
 }
 
